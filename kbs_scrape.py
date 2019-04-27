@@ -2,7 +2,8 @@ import requests
 from bs4 import BeautifulSoup
 import re
 import pygsheets
-import time
+from slackclient import SlackClient
+import slack_config
 
 # function to get all info from listing page
 def processListing(url):
@@ -64,13 +65,16 @@ def getStorage(sheet):
 
     return stored_urls
 
-# add url to storage if not already there
-def addToStorage(sheet, url):
+# check if url already exists in storage
+def isInStorage(sheet, url):
     # get what is already in db to check
     stored_urls = getStorage(sheet)
-    # if url not already stored, add
+
     if url not in stored_urls:
-        sheet.insert_rows(row=0, values=[url])
+        return False
+
+    return True
+
 
 
 # remove discarded postings from storage
@@ -89,6 +93,16 @@ def cleanUpStorage(sheet, scraped_urls):
     removal_keys.reverse()
     for key in removal_keys:
         sheet.delete_rows(key + 1)
+
+def slackBotMessage(message):
+    # connect to api and create client
+    sc = SlackClient(slack_config.TOKEN)
+    # set up channel api call
+    api_call = sc.api_call(
+        "chat.postMessage",
+        channel=slack_config.CHANNEL_ID,
+        text=message
+    )
 
 
 def main():
@@ -109,19 +123,23 @@ def main():
         info = processListing(url)
         # print(info['Viewing'], info['Type'])
         # unwanted: type = Parkeerplaats or Garagebox; Viewing = False
-        if info['Viewing'] or info['Type'] in ['Parkeerplaats', 'Garagebox']:
+        if not info['Viewing'] or info['Type'] in ['Parkeerplaats', 'Garagebox']:
             # print('invalid')
             pass
         else:
             # print('url')
             # check if url already in db, if not add
-            addToStorage(sheet, url)
-
-    # send link to slack
+            if not isInStorage(sheet, url):
+                sheet.insert_rows(row=0, values=[url])
+                # send link to slack
+                message = "New listing posted on KBS: " + url
+                slackBotMessage(message)
 
     # clean up db storage
     cleanUpStorage(sheet, urls)
 
 
 if __name__ == "__main__":
+    # try running scrape
     main()
+    # if not successfully ran / ends with error, run again in 5 minutes.
