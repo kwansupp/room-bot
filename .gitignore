@@ -2,3 +2,5 @@ slack_config.py
 credentials.json
 .idea*
 venv*
+
+app/__pycache__/*

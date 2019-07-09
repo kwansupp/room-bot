@@ -5,6 +5,7 @@ import pygsheets
 from slackclient import SlackClient
 import slack_config
 
+
 # function to get all info from listing page
 def processListing(url):
     # variables to store listing info
@@ -140,6 +141,5 @@ def main():
 
 
 if __name__ == "__main__":
-    # try running scrape
     main()
-    # if not successfully ran / ends with error, run again in 5 minutes.
+    slackBotMessage("Hello")
